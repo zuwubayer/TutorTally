@@ -1,0 +1,59 @@
+# Ignore build outputs
+/build/
+/app/build/
+/buildSrc/build/
+/out/
+*.apk
+*.aab
+*.aar
+*.iml
+
+# Ignore local properties (sensitive API keys, SDK locations, etc.)
+/local.properties
+.gradle/
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/compiler.xml
+.idea/jarRepositories.xml
+.idea/gradle.xml
+.idea/codeStyles/
+.idea/copyright/
+.idea/fileTemplates/
+.idea/inspectionProfiles/
+.idea/vcs.xml
+.idea/watcherTasks.xml
+.idea/misc.xml # Often contains Android SDK location, better to ignore it
+
+# Android Studio specific files
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+cmake_build/
+external_build/
+gradle-wrapper/gradle-wrapper.properties.temp
+
+# Gradle files
+*.gradle
+!gradle-wrapper.jar # Keep the wrapper JAR for consistent Gradle versions
+!gradle-wrapper.properties # Keep the wrapper properties
+gradle/wrapper/gradle-wrapper.jar
+/gradle-wrapper.properties # Sometimes located here
+
+# Keystore files (for signing your app - VERY IMPORTANT TO IGNORE!)
+*.jks
+*.keystore
+
+# Local test results
+/app/src/test/resources/
+
+# Firebase Crashlytics and Google Services (if applicable)
+google-services.json # If you're using Firebase, this should be handled carefully. Usually, it's safer to add it to .gitignore and provide instructions for collaborators to get their own. For now, it's safer to ignore.
+
+# A few common files to ignore
+*.log
+*.swp
+*.bak
+*.orig
