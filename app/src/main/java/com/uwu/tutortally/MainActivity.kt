@@ -8,11 +8,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -73,7 +74,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -83,32 +83,88 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.uwu.tutortally.ui.theme.Milonga
 import com.uwu.tutortally.ui.theme.TutorTallyButtonGrey
 import com.uwu.tutortally.ui.theme.TutorTallyDarkGrey
 import com.uwu.tutortally.ui.theme.TutorTallyGreen
 import com.uwu.tutortally.ui.theme.TutorTallyOrange
-import com.uwu.tutortally.ui.theme.Milonga
 import com.uwu.tutortally.ui.theme.TutorTallyTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+
 class StudentViewModel(application: Application) : ViewModel() {
     private val studentDao = TutorTallyDatabase.getDatabase(application).studentDao()
     val allStudentsWithLogs: Flow<List<StudentWithLogs>> = studentDao.getStudentsWithLogs()
-    fun addStudent(name: String, place: String, classes: Int) { viewModelScope.launch(Dispatchers.IO) { studentDao.insertStudent(Student(name = name, place = place, classesPerMonth = classes)) } }
-    fun logClassForStudent(student: Student) { viewModelScope.launch(Dispatchers.IO) { val log = ClassLog(studentId = student.id, timestamp = System.currentTimeMillis(), cycleNumber = student.currentCycle); studentDao.insertClassLog(log) } }
-    fun startNewCycle(student: Student) { viewModelScope.launch(Dispatchers.IO) { val updatedStudent = student.copy(currentCycle = student.currentCycle + 1); studentDao.updateStudent(updatedStudent) } }
-    fun deleteLog(log: ClassLog) { viewModelScope.launch(Dispatchers.IO) { studentDao.deleteClassLog(log) } }
-    fun deleteStudent(student: Student) { viewModelScope.launch(Dispatchers.IO) { studentDao.deleteStudent(student) } }
+
+    private val _message = MutableSharedFlow<String>()
+
+    fun addStudent(name: String, place: String, classes: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                studentDao.insertStudent(Student(name = name, place = place, classesPerMonth = classes))
+                _message.emit("Student '$name' added successfully!")
+            } catch (e: Exception) {
+                _message.emit("Error adding student: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    fun logClassForStudent(student: Student) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val log = ClassLog(studentId = student.id, timestamp = System.currentTimeMillis(), cycleNumber = student.currentCycle)
+                studentDao.insertClassLog(log)
+                _message.emit("Class logged for ${student.name}!")
+            } catch (e: Exception) {
+                _message.emit("Error logging class: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    fun startNewCycle(student: Student) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val updatedStudent = student.copy(currentCycle = student.currentCycle + 1)
+                studentDao.updateStudent(updatedStudent)
+                _message.emit("New cycle started for ${student.name}!")
+            } catch (e: Exception) {
+                _message.emit("Error starting new cycle: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    fun deleteLog(log: ClassLog) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                studentDao.deleteClassLog(log)
+                _message.emit("Class log deleted.")
+            } catch (e: Exception) {
+                _message.emit("Error deleting log: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    fun deleteStudent(student: Student) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                studentDao.deleteStudent(student)
+                _message.emit("Student '${student.name}' deleted.")
+            } catch (e: Exception) {
+                _message.emit("Error deleting student: ${e.localizedMessage}")
+            }
+        }
+    }
 }
 class StudentViewModelFactory(private val application: Application) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -130,6 +186,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -298,10 +356,11 @@ fun StudentCard(
                     modifier = Modifier.fillMaxWidth(animatedProgress).height(24.dp)
                         .background(brush = Brush.horizontalGradient(colors = listOf(animatedColor.copy(alpha = 0.7f), animatedColor)), shape = CircleShape)
                 )
+                
                 Text(
                     text = "$progress / ${student.classesPerMonth}",
                     modifier = Modifier.align(Alignment.Center),
-                    color = if (animatedProgress < 0.5f) Color.Black.copy(alpha = 0.6f) else Color.White,
+                    color = if (animatedProgress < 0.6f) Color.Black.copy(alpha = 0.6f) else Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp
                 )
@@ -330,8 +389,8 @@ fun StudentCard(
                                     items(
                                         items = logsInCycle.sortedByDescending { it.timestamp },
                                         key = { it.id }
-                                    ) { log ->
-                                        ClassLogItem(log = log, onDelete = { onDeleteLog(log) })
+                                    ) {
+                                        log -> ClassLogItem(log = log, onDelete = { onDeleteLog(log) })
                                     }
                                 }
                             }
@@ -361,13 +420,13 @@ fun CycleCompletedSeparator(cycleNumber: Int) {
 fun ClassLogItem(log: ClassLog, onDelete: () -> Unit) {
     var showDeleteLogConfirmation by remember { mutableStateOf(false) }
     if (showDeleteLogConfirmation) {
-        AlertDialog(onDismissRequest = { showDeleteLogConfirmation = false }, title = { Text("Delete Class Log") }, text = { Text("Are you sure you want to delete the class logged on ${formatTimestamp(log.timestamp)}? This action cannot be undone.") },
+        AlertDialog(onDismissRequest = { showDeleteLogConfirmation = false }, title = { Text("Delete Class Log") }, text = { Text("Are you sure you want to delete the class logged on ${SimpleDateFormat("MMMM dd 'at' hh:mm a, EEE", Locale.getDefault()).format(Date(log.timestamp))}? This action cannot be undone.") },
             confirmButton = { Button(onClick = { onDelete(); showDeleteLogConfirmation = false }, colors = ButtonDefaults.buttonColors(containerColor = Color.Red)) { Text("Confirm") } },
             dismissButton = { TextButton(onClick = { showDeleteLogConfirmation = false }) { Text("Cancel") } }
         )
     }
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(formatTimestamp(log.timestamp), fontSize = 14.sp)
+        Text(SimpleDateFormat("MMMM dd 'at' hh:mm a, EEE", Locale.getDefault()).format(Date(log.timestamp)), fontSize = 14.sp)
         IconButton(onClick = { showDeleteLogConfirmation = true }, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.Delete, contentDescription = "Delete Log", tint = Color.Red) }
     }
 }
@@ -427,16 +486,10 @@ private fun buildLogString(studentWithLogs: StudentWithLogs): String {
         val logsByCycle = logs.groupBy { it.cycleNumber }.toSortedMap()
         logsByCycle.forEach { (cycle, logsInCycle) ->
             stringBuilder.append("--- Cycle $cycle ---\n")
-            logsInCycle.sortedBy { it.timestamp }.forEach { log ->
-                stringBuilder.append("- ${formatTimestamp(log.timestamp)}\n")
-            }
+            logsInCycle.sortedBy { it.timestamp }.forEach { log ->                stringBuilder.append("- ${SimpleDateFormat("MMMM dd 'at' hh:mm a, EEE", Locale.getDefault()).format(Date(log.timestamp))}\n")            }
             stringBuilder.append("\n")
         }
     }
     return stringBuilder.toString()
 }
 
-private fun formatTimestamp(timestamp: Long): String {
-    val sdf = SimpleDateFormat("MMMM dd 'at' hh:mm a", Locale.getDefault())
-    return sdf.format(Date(timestamp))
-}
